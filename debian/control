@@ -1,0 +1,20 @@
+Source: opengrok
+Section: misc
+Priority: extra
+Maintainer: Luar Roji <luar@scrapinghub.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.2
+Homepage: http://opengrok.github.io/OpenGrok/
+Vcs-Git: https://github.com/OpenGrok/OpenGrok.git
+Vcs-Browser: https://github.com/OpenGrok/OpenGrok
+
+Package: opengrok
+Architecture: all
+Depends: ${misc:Depends}, tomcat7
+Description: Fast and usable source code search and XRef engine.
+ It helps you search, cross-reference and navigate your source tree. 
+ It can understand various program file formats and version control 
+ histories like Mercurial, Git, SCCS, RCS, CVS, Subversion, Teamware, 
+ ClearCase, Perforce, Monotone and Bazaar. In other words it lets you 
+ grok (profoundly understand) source code and is developed in the 
+ open, hence the name OpenGrok. It is written in Java.
