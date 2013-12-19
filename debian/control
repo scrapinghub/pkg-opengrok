@@ -10,7 +10,7 @@ Vcs-Browser: https://github.com/OpenGrok/OpenGrok
 
 Package: opengrok
 Architecture: all
-Depends: ${misc:Depends}, tomcat7
+Depends: ${misc:Depends}, tomcat7, exuberant-ctags
 Description: Fast and usable source code search and XRef engine.
  It helps you search, cross-reference and navigate your source tree. 
  It can understand various program file formats and version control 
