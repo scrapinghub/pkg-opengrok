@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Install opengrok webapp in tomcat
+        if [ ! -f /var/lib/tomcat7/webapps/opengrok.war ]; then
+            ln -s /usr/share/opengrok/source.war /var/lib/tomcat7/webapps/opengrok.war
+        fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0
