@@ -1,16 +1,23 @@
+#
+# Copyright (c) 2006, 2014, Oracle and/or its affiliates. All rights reserved.
+#
+
+
 OpenGrok - a wicked fast source browser
 ---------------------------------------
 
 1.  Introduction
 2.  Requirements
 3.  Usage
-4.  OpenGrok setup
-5.  Optional Command Line Interface Usage
-6.  Change web application properties or name
-7.  OpenGrok systray
-8.  Information for developers
-9.  Authors
-10. Contact us
+4.  OpenGrok install
+5.  OpenGrok setup
+6.  Optional Command Line Interface Usage
+7.  Change web application properties or name
+8.  OpenGrok systray
+9.  Information for developers
+10.  Tuning OpenGrok for large code bases
+11.  Authors
+12. Contact us
 
 
 1. Introduction
@@ -23,28 +30,26 @@ version control histories like SCCS, RCS, CVS, Subversion, Mercurial etc.
 
 Offical page of the project is on:
 
-  http://hub.opensolaris.org/bin/view/Project+opengrok/
+  http://opengrok.github.com/OpenGrok/
 
 2. Requirements
 ---------------
 
-    * Latest Java (At least 1.6)
+    * Latest Java (At least 1.7)
       http://www.oracle.com/technetwork/java/
-    * A servlet container like Tomcat (6.x or later)
+    * A servlet container like Tomcat (7.x or later)
       supporting Servlet 2.4 and JSP 2.0
       http://tomcat.apache.org/
     * Exuberant Ctags
       http://ctags.sourceforge.net/
-    * Subversion 1.3.0 or later if SVN support is needed
-      http://subversion.tigris.org/
-    * Mercurial 0.9.3 or later if Mercurial support is needed
-      http://www.selenic.com/mercurial/wiki/
+    * Source Code Management installation
+      depending on type of repositories indexed
     * If you want to build OpenGrok:
-      - Ant (1.7 and later)
+      - Ant (1.8 and later)
         http://ant.apache.org/
       - JFlex
-        http://www.jflex.org/
-      - Netbeans (optional, at least 7.1)
+        http://www.jflex.de/
+      - Netbeans (optional, at least 7.4, will need Ant 1.8.1)
         http://netbeans.org/
 
 3. Usage
@@ -85,38 +90,70 @@ Each of these directories was created with 'cvs checkout' command (with
 appropriate arguments to get given branch) and will be treated by OpenGrok
 as a project.
 
-4. OpenGrok setup
+
+4. OpenGrok install
+-----------------
+
+4.1 Installing on Solaris from *.p5p file
+-----------------
+
+4.1.0 Install
+-----------------
+
+The file <package_name>.p5p you can easily use as a new publisher for the pkg command.
+
+  # pkg install --no-refresh -g /path/to/file/<package_name>.p5p opengrok
+
+
+4.1.1 Update
+-----------------
+
+You can also update OpenGrok software with the *.p5p file by running a command
+
+  # pkg update --no-refresh -g /path/to/file/<package_name>.p5p 'pkg://<publisher>/*'
+
+
+5. OpenGrok setup
 -----------------
 
 To setup OpenGrok it is needed to prepare the source code, let OpenGrok index
 it and start the web application.
 
-4.1 Setting up the sources
+5.1 Setting up the sources
 --------------------------
 
-Source base must be available locally for OpenGrok to work efficiently.
+Source base should be available locally for OpenGrok to work efficiently.
 No changes are required to your source tree. If the code is under source
 control management (SCM) OpenGrok requires the checked out source tree under
 SRC_ROOT.
 
 By itself OpenGrok does not perform the setup of the source code repositories
-or sychronization of the source code with its origin. This is to be done by
-the user or automatic scripts.
+or sychronization of the source code with its origin. This needs to be done by
+the user or by using automatic scripts.
 
-It is possible for some SCM systems to use a remote repository (Subversion,
-CVS), but this is not recommended due to the performance penalty. Special
-option when running the OpenGrok indexer is needed to enable remote repository
-support ("-r on").
+It is possible for SCM systems which are not distributed (Subversion, CVS)
+to use a remote repository but this is not recommended due to the performance
+penalty. Special option when running the OpenGrok indexer is needed to enable
+remote repository support ("-r on").
+
+In order for history indexing to work for any SCM system it is necessary
+to have environment for given SCM systems installed and in a path accessible
+by OpenGrok.
 
 Note that OpenGrok ignores symbolic links.
 
-4.2 Using Opengrok wrapper script to create indexes
+If you want to skip indexing the history of a particular directory
+(and all of it's subdirectories), you can touch '.opengrok_skip_history' file
+at the root of that directory.
+
+
+5.2 Using Opengrok wrapper script to create indexes
 ---------------------------------------------------
 
 For *nix systems there is a shell script called OpenGrok which simplifies most
 of the tasks. It has been tested on Solaris and Linux distributions.
 
-4.2.1 - Deploy the web application
+5.2.1 - Deploy the web application
 ----------------------------------
 
 First please change to opengrok directory where the OpenGrok shell script is
@@ -135,16 +172,16 @@ and run
 This command will do some sanity checks and will deploy the source.war in
 its directory to one of detected web application containers.
 Please follow the error message it provides.
+
 If it fails to discover your container, please refer to optional steps on
-changing web application properties, which has manual steps on how to do
-this.
+changing web application properties below, which explains how to do this.
 
 Note that OpenGrok script expects the directory /var/opengrok to be
 available to user running opengrok with all permissions. In root user case
 it will create all the directories needed, otherwise you have to manually
 create the directory and grant all permissions to the user used.
 
-4.2.2 - Populate DATA_ROOT Directory
+5.2.2 - Populate DATA_ROOT Directory
 ------------------------------------
 
 During this process the indexer will generate OpenGrok XML configuration file
@@ -173,6 +210,11 @@ Once above command finishes without errors
 (e.g. SEVERE: Failed to send configuration to localhost:2424),
 you should be able to enjoy your opengrok and search your sources using
 latest indexes and setup.
+
+It is assumed that any SCM commands are reachable in one of the components
+of the PATH environment variable (e.g. 'git' command for Git repositories).
+Likewise, this should be maintained in the environment of the user which runs
+the web server instance.
 
 Congratulations, you should now be able to point your browser to
 http://<YOUR_WEBAPP_SERVER>:<WEBAPPSRV_PORT>/source to work with your fresh
@@ -203,7 +245,7 @@ OPENGROK_CONFIGURATION environment variable to point to it. Obviously such
 setups can be used for nightly cron job updates of index or other automated
 purposes.
 
-4.3 Using SMF service (Solaris) to maintain OpenGrok indexes
+5.3 Using SMF service (Solaris) to maintain OpenGrok indexes
 ------------------------------------------------------------
 
 If you installed OpenGrok from the OSOLopengrok package, it will work out of
@@ -242,12 +284,12 @@ Note: before removing the package please disable the service.
 If you don't do it, it will not be removed automatically.
 In such case please remove it manually.
 
-4.4 Using command line interface to create indexes
+5.4 Using command line interface to create indexes
 --------------------------------------------------
 
 There are 2 (or 3) steps needed for this task.
 
-4.4.1 - Populate DATA_ROOT Directory
+5.4.1 - Populate DATA_ROOT Directory
 ------------------------------------
 
 Option 1. OpenGrok: There is a sample shell script OpenGrok that is suitable
@@ -263,17 +305,17 @@ hypertext files generated by OpenGrok are to be stored in DATA_ROOT, run
 
 See opengrok.jar manual below for more details.
 
-4.4.2 - Configure and Deploy source.war Webapp
+5.4.2 - Configure and Deploy source.war Webapp
 ----------------------------------------------
 
 To configure the webapp source.war, look into the parameters defined in
 web.xml of source.war file and change them (see note1) appropriately.
 
     * HEADER: is the fragment of HTML that will be used to display title or
-    logo of your project
+              logo of your project
     * SRC_ROOT: absolute path name of the root directory of your source tree
     * DATA_ROOT: absolute path of the directory where OpenGrok data
-    files are stored
+                 files are stored
        - Header file 'header_include' can be created under DATA_ROOT.
 	 The contents of this file file will be appended to the header of each
 	 web page after the OpenGrok logo element.
@@ -281,17 +323,42 @@ web.xml of source.war file and change them (see note1) appropriately.
 	 The contents of this file file will be appended to the footer of each
 	 web page after the information about last index update.
 
-4.4.3 - Path Descriptions
--------------------------
+5.4.3 - Path Descriptions (optional)
+------------------------------------
 
-OpenGrok uses path descriptions in various places (For eg. while showing
-directory listings or search results) Example descriptions are in paths.tsv
-file. You can list descriptions for directories one per line tab separated
-format path tab description. Refer to example 4 below.
+OpenGrok can use path descriptions in various places (e.g. while showing
+directory listings or search results). Example descriptions are in paths.tsv
+file (delivered as /usr/opengrok/doc/paths.tsv by OpenGrok package on Solaris).
+The paths.tsv file is read by OpenGrok indexing script from the configuration
+directory (the same where configuration.xml is located) which will create file
+dtags.eftar in the index subdirectory under DATA_ROOT directory which will
+then be used by the webapp to display the descriptions.
 
-Note 1 - Changing webapp parameters: web.xml is the deployment descriptor
-for the web application. It is in a Jar file named source.war, you can
-change the :
+The file contains descriptions for directories one per line. Path to the
+directory and its description are separated by tab. The path to the directory
+is absolute path under the SRC_ROOT directory.
+
+For example, if the SRC_ROOT directory contains the following directories:
+
+foo
+bar
+bar/blah
+random
+random/code
+
+then the paths.tsv file contents can look like this:
+
+/foo	source code for foo
+/bar	source code for bar
+/bar/blah	source code for blah
+
+Note that only some paths can have a description.
+
+5.4.4 - Changing webapp parameters (optional)
+---------------------------------------------
+
+web.xml is the deployment descriptor for the web application. It is in a Jar
+file named source.war, you can change it as follows:
 
     * Option 1: Unzip the file to TOMCAT/webapps/source/ directory and
      change the source/WEB-INF/web.xml and other static html files like
@@ -336,7 +403,22 @@ change the :
 
      This file will contain something like the Context described above.
 
-4.5 Using Java DB for history cache
+5.4.5 Custom ctags configuration
+--------------------------------
+
+To make ctags recognize additional symbols/definitions/etc. it is possible to
+specify configuration file with extra configuration options for ctags.
+
+This can be done by setting OPENGROK_CTAGS_OPTIONS_FILE environment variable
+when running the OpenGrok shell script (or directly with the -o option for
+opengrok.jar). Default location for the configuration file in the OpenGrok
+shell script is etc/ctags.config under the OpenGrok base directory (by default
+the full path to the file will be /var/opengrok/etc/ctags.config).
+
+Sample configuration file for Solaris code base is delivered in the doc/
+directory.
+
+5.5 Using Java DB for history cache
 -----------------------------------
 
 By default OpenGrok stores history indexes in gzipped xml files. An alternative
@@ -363,8 +445,6 @@ Debian/Ubuntu:
   Java DB server is the default option, we will not describe how to set up the
   embedded one.
 
-  $ mkdir -p $DATA_ROOT/derby
-
   Solaris 11:
 
     Use one of the following methods to start the database:
@@ -375,11 +455,13 @@ Debian/Ubuntu:
   
     b) from command line:
   
+       $ mkdir -p $DATA_ROOT/derby
        $ java -Dderby.system.home=$DATA_ROOT/derby \
            -jar /opt/SUNWjavadb/lib/derbynet.jar start
   
   Debian:
 
+    $ mkdir -p $DATA_ROOT/derby
     $ java -Dderby.system.home=$DATA_ROOT/derby \
           -jar /usr/lib/jvm/java-6-sun/db/lib/derbynet.jar start
 
@@ -396,11 +478,13 @@ Copy it over from:
   Solaris 11: /opt/SUNWjavadb/lib/derbyclient.jar
   Debian: /usr/lib/jvm/java-6-sun/db/lib/derbyclient.jar
 
-  For example on Solaris 11 with bundled Java DB and Tomcat the command
-  will be:
+  For example on Solaris 11 with bundled Java DB and Tomcat and OpenGrok
+  installed from the OSOLopengrok package the command will be:
 
     # cp /opt/SUNWjavadb/lib/derbyclient.jar \
           /var/tomcat6/webapps/source/WEB-INF/lib/
+    # cp /opt/SUNWjavadb/lib/derbyclient.jar \
+          /usr/opengrok/lib
 
 3) Use these options with indexer when indexing/generating the configuration:
    -D -H
@@ -413,11 +497,20 @@ application.
 
 Note: To use a bigger database buffer, which may improve performance of both
 indexing and fetching of history, create a file named derby.properties in
-$DATA_ROOT/derby and add this line to it:
+the JavaDB data directory and add this line to it:
 
-derby.storage.pageCacheSize=25000
+  - If using specific data directory:
 
-5. Optional Command Line Interface Usage
+    # echo "derby.storage.pageCacheSize=25000" >> \
+          $DATA_ROOT/derby/derby.properties
+
+  - Using default directory on Solaris with JavaDB being run from SMF:
+
+    # echo "derby.storage.pageCacheSize=25000" >> \
+          /var/lib/javadb/data/derby.properties
+
+
+6. Optional Command Line Interface Usage
 ----------------------------------------
 
 You need to pass location of project file + the query to Search class, e.g.
@@ -431,7 +524,7 @@ do:
 
   $ java -cp ./opengrok.jar org.opensolaris.opengrok.search.Search
 
-6. Change web application properties or name
+7. Change web application properties or name
 --------------------------------------------
 
 You might need to modify the web application if you don't store the
@@ -477,7 +570,7 @@ Deploy the modified .war file in tomcat:
 
   * just copy the source.war file to TOMCAT_INSTALL/webapps directory.
 
-7. OpenGrok systray
+8. OpenGrok systray
 -------------------
 
 The indexer can be setup with agent and systray GUI control application.
@@ -503,10 +596,55 @@ localhost, but rather on a physical network interface).
 
 This agent is work in progress, so it might not fully work.
 
-8. Information for developers
+9. Information for developers
 -----------------------------
 
-8.1 Using Findbugs
+9.0 Building
+------------
+
+Just run 'ant' from command line in the top-level directory or use build
+process driven by graphical developer environment such as Netbeans.
+
+Note: in case you are behind http proxy, use ANT_OPTS to download jflex, lucene
+E.g. $ ANT_OPTS="-Dhttp.proxyHost=?.? -Dhttp.proxyPort=80" ant
+
+
+9.0.1 Package build
+-------------------
+
+Run 'ant package' to create package (specific for the operating system this is
+being executed on) under the dist/ directory.
+
+9.1 Unit testing
+----------------
+
+Note: For full coverage report your system has to provide proper junit test 
+environment, that would mean:
+
+  - you have to use Ant 1.7 and above
+  - at least junit-4.10.jar has to be in ant's classpath (e.g. in ./lib)
+    - Example install in the top of the opengrok repository:
+
+      $ cd lib
+      $ wget http://.../junit-4.10.jar
+      $ jar -xf junit-4.10.jar
+
+  - install derby.jar to ant's classpath so that Java DB tests can be run
+  - your PATH must contain directory with exuberant ctags binary
+    - Note: make sure that the directory which contains exuberant ctags binary
+      is prepended before the directory with plain ctags program.
+  - your PATH variable must contain directories which contain binaries of
+    appropriate SCM software which means commands hg, sccs, cvs, git, bzr, svn
+    (svnadmin too). They must be available for the full report.
+
+The tests are then run as follows:
+
+  $ ant -lib ./lib test
+
+To check if the test completed without error look for AssertionFailedError
+occurences in the TESTS-TestSuites.xml file produced by the test run.
+
+9.2 Using Findbugs
 ------------------
 
 If you want to run Findbugs (http://findbugs.sourceforge.net/) on OpenGrok,
@@ -541,7 +679,7 @@ under the lib directory):
 There is also a findbugs-xml ant target that can be used to generate XML files
 that can later be parsed, e.g. by Jenkins.
 
-8.2 Using Emma
+9.3 Using Emma
 --------------
 
 If you want to check test coverage on OpenGrok, download Emma from
@@ -592,17 +730,7 @@ To generate reports, run ant again:
 Look at coverage/coverage.txt, coverage/coverage.xml and 
 coverage/coverage.html to see how complete your tests are.
 
-Note: For full coverage report your system has to provide proper junit test 
-environment, that would mean:
-
-  - you have to use ant 1.7 and above
-  - at least junit-4.?.jar has to be in ants classpath (e.g. in ./lib)
-  - your PATH must contain exuberant ctags binary
-  - your PATH variable must contain binaries of appropriate SCM SW, so
-    commands hg, sccs, cvs, git, bzr, svn (svnadmin too) must be available for
-    the full report.
-
-8.3 Using Checkstyle
+9.4 Using Checkstyle
 --------------------
 
 To check that your code follows the standard coding conventions,
@@ -636,7 +764,7 @@ checkstyle under the lib directory):
 
   $ ant checkstyle -Dcheckstyle.home=lib/checkstyle
 
-8.4 Using PMD and CPD
+9.5 Using PMD and CPD
 ---------------------
 
 To check the quality of the OpenGrok code you can also use PMD
@@ -645,14 +773,15 @@ from http://pmd.sourceforge.net/.
 How to install:
 
   $ cd ~/.ant/lib
-  $ unzip ~/Desktop/pmd-bin-4.2.5.zip
-  $ ln -s pmd-4.2.5/ pmd
+  $ unzip ~/Desktop/pmd-bin-5.0.0.zip
+  $ ln -s pmd-5.0.0/ pmd
 
 You also have to make links to the jar files:
 
   $ cd ~/.ant/lib/pmd/lib
-  $ ln -s pmd-4.2.5.jar pmd.jar
+  $ ln -s pmd-5.0.0.jar pmd.jar
   $ ln -s jaxen-1.1.1.jar jaxen.jar
+  $ ln -s asm-3.2.jar asm.jar
 
 To run PMD on the rource code, just run ant pmd:
 
@@ -668,7 +797,7 @@ unzip the .zip file to a directory, and use the pmd.home property
 to tell ant where to find PMD, like this (if you have installed 
 PMD under the lib directory):
 
-  $ ant pmd -Dpmd.home=lib/pmd-4.2.5
+  $ ant pmd -Dpmd.home=lib/pmd-5.0.0
 
 To run CPD, just use the same as above, but use targets:
 
@@ -679,8 +808,8 @@ Which will result in:
   $ ls pmd
   cpd_report.xml cpd_report.txt
 
-8.5 Using JDepend
----------------------
+9.6 Using JDepend
+-----------------
 
 To see dependencies in the source code, you can use JDepend from
 http://clarkware.com/software/JDepend.html.
@@ -702,24 +831,104 @@ Output is stored in the jdepend directory:
   $ ls jdepend/
   report.txt  report.xml
 
-9. Authors
-----------
+9.7 Using SonarQube
+-------------------
+
+Use a sonar runner with included sonar-project.properties properties, 
+e.g. using bash:
+
+  $ cd <checkout_dir> # it has to contain sonar-project.properties!
+  $ export SONAR_RUNNER_OPTS="-Xmx768m -XX:MaxPermSize=256m"
+  $ export SERVERIP=10.163.26.78
+  $ ~//Projects/sonar-runner-2.3/bin/sonar-runner \
+    -Dsonar.host.url=http://${SERVERIP}:9000 
+    -Dsonar.jdbc.url=jdbc:h2:tcp://${SERVERIP}:9092/sonar
+
+9.8 Using Travis CI
+-------------------
+
+Please see .travis.yml, if your branch has this file,
+you should be able to connect your Github to Travis CI.
+OpenGroks Travis is here: https://travis-ci.org/OpenGrok/OpenGrok
+
+
+10. Tuning OpenGrok for large code bases
+---------------------------------------
+
+While indexing big source repos you might consider using ZFS filesystem to give 
+you advantage of datasets which can be flipped over or cloned when needed.
+If the machine is strong enough it will also give you an option to 
+incrementally index in parallel to having the current sources and index in sync.
+(So tomcat sees certain zfs datasets, then you just stop it, flip datasets to 
+the ones that were updated by SCM/index and start tomcat again - outage is 
+minimal, sources+indexes are ALWAYS in sync, users see the truth)
+
+OpenGrok script by default uses 2G of heap and 16MB per thread for flush size of 
+lucene docs indexing(when to flush to disk).
+It also uses default 32bit JRE.
+This MIGHT NOT be enough. You might need to consider this:
+Lucene 4.x sets indexer defaults:
+ DEFAULT_RAM_PER_THREAD_HARD_LIMIT_MB = 1945;
+ DEFAULT_MAX_THREAD_STATES = 8;
+ DEFAULT_RAM_BUFFER_SIZE_MB = 16.0; 
+ - which might grow as big as 16GB (though DEFAULT_RAM_BUFFER_SIZE_MB shouldn't
+ really allow it, but keep it around 1-2GB)
+
+ - the lucenes RAM_BUFFER_SIZE_MB can be tuned now using the parameter -m, so 
+running a 8GB 64 bit server JDK indexer with tuned docs flushing(on Solaris 11):
+
+ # export JAVA=/usr/java/bin/`isainfo -k`/java
+ (or use /usr/java/bin/amd64/java )
+ # export JAVA_OPTS="-Xmx8192m -server"
+ # OPENGROK_FLUSH_RAM_BUFFER_SIZE="-m 256" ./OpenGrok index /source
+
+Tomcat by default also supports only small deployments. For bigger ones you
+MIGHT need to increase its heap which might necessitate the switch to 64-bit 
+Java. It will most probably be the same for other containers as well.
+For tomcat you can easily get this done by creating conf/setenv.sh:
+
+ # cat conf/setenv.sh
+ # 64-bit Java
+ JAVA_OPTS="$JAVA_OPTS -d64 -server"
+
+ # OpenGrok memory boost to cover all-project searches
+ # (7 MB * 247 projects + 300 MB for cache should be enough)
+ # 64-bit Java allows for more so let's use 8GB to be on the safe side.
+ # We might need to allow more for concurrent all-project searches.
+ JAVA_OPTS="$JAVA_OPTS -Xmx8g"
+
+ export JAVA_OPTS
+
+
+For tomcat you might also hit a limit for http header size (we use it to send 
+the project list when requesting search results):
+ - increase(add) in conf/server.xml maxHttpHeaderSize
+  connectionTimeout="20000"
+ maxHttpHeaderSize="65536"
+  redirectPort="8443" />
+
+Refer to docs of other containers for more info on how to achieve the same.
+
+
+11. Authors
+-----------
 
 The project has been originally conceived in Sun Microsystems by Chandan B.N.
 
-Chandan B.N, Oracle. http://blogs.oracle.com/chandan/
+Chandan B.N, (originally Sun Microsystems) http://blogs.oracle.com/chandan/
 Trond Norbye, norbye.org
 Knut Pape, eBriefkasten.de
-Martin Englund, Sun Microsystems
+Martin Englund, (originally Sun Microsystems)
 Knut Anders Hatlen, Oracle. http://blogs.oracle.com/kah/
 Lubos Kosco, Oracle. http://blogs.oracle.com/taz/
+Vladimir Kotal, Oracle. http://blogs.oracle.com/vlad/
 
-10. Contact us
+12. Contact us
 --------------
 
-Feel free to participate in discussion on opengrok-discuss@opensolaris.org.
+Feel free to participate in discussion on discuss@opengrok.java.net.
 
 You can subscribe via web interface on:
 
-  http://mail.opensolaris.org/mailman/listinfo/opengrok-discuss
+  http://java.net/projects/opengrok/lists
 

@@ -3,13 +3,13 @@
 # OpenGrok Wrapper (initial setup and cron job updating)
 #
 # Supported Operating Systems:
-#   - Solaris 10  (SunOS 5.10)
 #   - Solaris 11  (SunOS 5.11)
+#   - Solaris 12  (SunOS 5.12)
 #   - Debian      (Linux)
 #
 # Supported Deployment Engines:
+#   - Tomcat 7
 #   - Tomcat 6
-#   - Tomcat 5.5
 #   - Glassfish
 #
 # Supported Environment Variables:
@@ -21,9 +21,14 @@
 #   - OPENGROK_DISTRIBUTION_BASE  Base Directory of the OpenGrok Distribution
 #   - OPENGROK_INSTANCE_BASE      Base Directory of the OpenGrok User Data Area
 #   - EXUBERANT_CTAGS             Full Path to Exuberant CTags
+#   - OPENGROK_CTAGS_OPTIONS_FILE Full path to file with extra command line
+#                                 options for CTags program (for its --options
+#                                 switch), default is DATA_ROOT/etc/ctags.config
 #   - JAVA_HOME                   Full Path to Java Installation Root
-#   - JAVA                        Full Path to java binary
-#   - JAVA_OPTS                   Java options
+#   - JAVA                        Full Path to java binary (to enable 64bit JDK)
+#   - JAVA_OPTS                   Java options (e.g. for JVM memory increase
+#                                 or enabling server JDK)
+#                                 JAVA_OPTS=-Xmx2048m is the default!
 #   - OPENGROK_APP_SERVER         Application Server ("Tomcat" or "Glassfish")
 #   - OPENGROK_WAR_TARGET_TOMCAT  Tomcat Specific WAR Target Directory
 #   - OPENGROK_WAR_TARGET_GLASSFISH Glassfish Specific WAR Target Directory
@@ -37,31 +42,48 @@
 #                                 through project, it's good to have Verbose
 #                                 Mode enabled too, cost of this is one more
 #                                 traversal of the project before indexing it(*)
-#   - OPENGROK_REMOTE_REPOS       Disable History Cache for (remote)
-#                                 Repositories (*)
+#   - OPENGROK_REMOTE_REPOS       Influence history cache generation for remote
+#                                 repositories. Following values are recognized:
+#                                   on - enabled (default)
+#                                   off - disabled for indexing and UI
+#                                   dirbased - indexing enabled only for repos
+#                                              which can fetch history for
+#                                              directory
+#                                   uionly - enabled for UI only
 #   - OPENGROK_SCAN_REPOS         Disable Scan for repositories (*)
 #   - OPENGROK_SCAN_DEPTH         how deep should scanning for repos go
 #                                 (by default 3 directories from SRC_ROOT)
 #   - OPENGROK_WEBAPP_CFGADDR     Web app address to send configuration to
 #                                 (use "none" to avoid sending it to web app)
+#   - OPENGROK_WEBAPP_CONTEXT     Context URL of the OpenGrok webapp
+#                                 (by default /source)
 #   - OPENGROK_WPREFIX            Disable wildcard prefix search query
 #                                 support (*)
 #   - OPENGROK_DERBY              if set, then indexer tries to use derby as
 #                                 historycache (see derby command of this
 #                                 script)
+#   - OPENGROK_DERBY_URL          Use specific URL to JavaDB, e.g.
+#                                 "jdbc:derby://localhost:1528/cachedb;create=true"
+#                                 (default port is 1527)
+#   - OPENGROK_TAG                Enable parsing of revision tags into the History
+#                                 view
 #   - READ_XML_CONFIGURATION      file with read only configuration
 #                                 - temporary workaround for bug # 327
+#   - OPENGROK_FLUSH_RAM_BUFFER_SIZE="-m 16" - set RAM buffer size for flushing, 
+#                                 default is 16MB per thread, you might try to 
+#                                 increase it to 256MB, but do increase JVM to 
+#                                 4/8/16GB ! Lucene defaults to 8 threads.
+#                                 Increase JVM memory as noted using JAVA_OPTS
 #
 # Notes:
 #   (*) Any Non-Empty String will enable these options
 #
 
 #
-# Copyright (c) 2008, 2012, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
 #
-
 #
-# Print usage to stderr and exit.
+# Print usage to stdout and exit.
 #
 Usage()
 {
@@ -69,8 +91,9 @@ Usage()
 
     exec >&2
     echo ""
-    echo "Usage: ${progname} <deploy|derby|update|updateQuietly|usage>"
+    echo "Usage: ${progname} <deploy|derby|update|updateQuietly|usage|help>"
     echo "       ${progname} index [<directory>]"
+    echo "       ${progname} clearHistory [<repository_name>]"
     echo ""
     echo "  Optional environment variables:"
     echo "    OPENGROK_CONFIGURATION - location of your configuration"
@@ -79,20 +102,21 @@ Usage()
     echo "    See the code for more information on configuration options /" \
         "variables"
     echo ""
-
     exit 1
 }
 
 #
 # Runtime Configuration
 #
-if [ -f "/bin/uname" ]
-then
-    OS_NAME="`/bin/uname -s`"
-    OS_VERSION="`/bin/uname -r`"
+if [ -x "/bin/uname" ]; then
+	OS_NAME="`/bin/uname -s`"
+	OS_VERSION="`/bin/uname -r`"
+elif [ -x "/usr/bin/uname" ]; then
+	OS_NAME="`/usr/bin/uname -s`"
+	OS_VERSION="`/usr/bin/uname -r`"
 else
-    OS_NAME="`/usr/bin/uname -s`"
-    OS_VERSION="`/usr/bin/uname -r`"
+	echo "Cannot determine operating system version"
+	exit 1
 fi
 
 # TODO: Handle symlinks correctly (especially in ${0})
@@ -152,7 +176,8 @@ DefaultInstanceConfiguration()
     #           This area is rebuilt by "update" / "updateQuietly"
     DATA_ROOT="${OPENGROK_INSTANCE_BASE}/data"
 
-    # OPTIONAL: User Provided Source Path to Description Mapping (Tab Separated Value)
+    # OPTIONAL: User Provided Source Path to Description Mapping
+    # 		(Tab Separated Value)
     #           (The user maintained source of the generated EftarFile file)
     PATH_DESC="${OPENGROK_INSTANCE_BASE}/etc/paths.tsv"
 
@@ -182,6 +207,13 @@ DefaultInstanceConfiguration()
     # REQUIRED: Exuberant CTags (http://ctags.sf.net)
     EXUBERANT_CTAGS="${EXUBERANT_CTAGS:-`FindExuberantCTags`}"
 
+    # OPTIONAL: supply extra command line options to CTags program
+    if [ -n "${OPENGROK_CTAGS_OPTIONS_FILE}" ]; then
+        CTAGS_OPTIONS_FILE="${OPENGROK_CTAGS_OPTIONS_FILE}"
+    elif [ -r "${OPENGROK_INSTANCE_BASE}/etc/ctags.config" ]; then
+        CTAGS_OPTIONS_FILE="${OPENGROK_INSTANCE_BASE}/etc/ctags.config"
+    fi
+
     # REQUIRED: Java Home
     JAVA_HOME="${JAVA_HOME:-`FindJavaHome`}"
     export JAVA_HOME
@@ -196,6 +228,9 @@ DefaultInstanceConfiguration()
 
     # OPTIONAL: Ignore these patterns as names of files or directories
     #IGNORE_PATTERNS="-i dummy"
+    # To ignore skipping just the history cache creation for a particular
+    # directory and all of it's subdirectories, touch an empty
+    # .opengrok_skip_history file at the root of that directory
 
     # OPTIONAL: Enable Projects
     #           (Every directory in SRC_ROOT is considered a separate project)
@@ -208,12 +243,11 @@ DefaultInstanceConfiguration()
         SCAN_FOR_REPOSITORY=""
     fi
 
-    # OPTIONAL: Remote Repository Support (CVS or SVN)
-    #           (Can be very time demanding, uncomment if needed)
+    # OPTIONAL: Disable remote repository support (CVS or SVN) [on by default]
     REMOTE_REPOSITORIES="-r on"
     if [ -n "${OPENGROK_REMOTE_REPOS}" ]
     then
-        REMOTE_REPOSITORIES=""
+        REMOTE_REPOSITORIES="-r ${OPENGROK_REMOTE_REPOS}"
     fi
 
     # OPTIONAL: override depth of scanning for repositories
@@ -233,14 +267,7 @@ DefaultInstanceConfiguration()
     # OPTIONAL: Web Site Look & Feel
     #           (Options: default, offwhite and polished.
     #            Note the quoting requirements)
-    #SKIN='-L "default"'
-
-    # OPTIONAL: Set Maximum Indexed Words Per File
-    # Note, that you might run out of memory, then either increase JVM memory
-    # as noted in JAVA_OPTS, or set this limit(if you don't mind opengrok not
-    # indexing the rest of the file, once the limit is reached)
-    #           (default: unlimited)
-    #MAX_INDEXED_WORDS="-m 100000"
+    #SKIN='-L default'
 
     # OPTIONAL: Configuration Address (host:port)
     #           (conf/web.xml default is localhost:2424)
@@ -258,9 +285,16 @@ DefaultInstanceConfiguration()
         WEBAPP_CONFIG="-U ${WEBAPP_CONFIG_ADDRESS}"
     fi
 
+    # OPTIONAL: Context URL of the OpenGrok webapp
+    #           (default is /source)
+    WEBAPP_CONTEXT=""
+    if [ -n "${OPENGROK_WEBAPP_CONTEXT}" ]; then
+        WEBAPP_CONTEXT="-w ${OPENGROK_WEBAPP_CONTEXT}"
+    fi
+
     # OPTIONAL: JVM Options
     JAVA_OPTS="${JAVA_OPTS:--Xmx2048m}"
-
+    
     # OPTIONAL: Full Path to History Utilities
     HG="`Which hg`"
     CVS="`Which cvs`"
@@ -295,7 +329,18 @@ ${BZR:+-Dorg.opensolaris.opengrok.history.Bazaar=$BZR} \
     #
     if [ -n "${OPENGROK_DERBY}" ]
     then
-        DERBY_HISTORY_CACHE="-D"
+        DERBY_OPTIONS="-D"
+	if [ -n "${OPENGROK_DERBY_URL}" ]; then
+		DERBY_OPTIONS="${DERBY_OPTIONS} -u ${OPENGROK_DERBY_URL}"
+	fi
+    fi
+
+    # OPTIONAL: Show revision tags in History view.
+    #		Turn this off if you want to increase indexing performance a bit
+    #           (default: off)
+    if [ -n "${OPENGROK_TAG}" ]
+    then
+        HISTORY_TAGS="-G"
     fi
 
     # DELIVERED: An update program for EftarFile
@@ -395,20 +440,32 @@ LocateBinary() {
 
 FindExuberantCTags()
 {
-    binary=`LocateBinary ctags-exuberant exctags ctags`
-    if test $? -eq 1
-    then
+    #
+    # Search for Exuberant ctags intelligently, skipping
+    # over other ctags implementations.
+    #
+    binary=""
+    found=0
+    for program in ctags-exuberant exctags ctags; do
+	for path in `echo $PATH | tr ':' '\n'`; do
+		if [ -x "$path/$program" ]; then
+			binary="$path/$program"
+
+			# Verify that this really is Exuberant Ctags.
+			$binary --version 2>&1 | grep "Exuberant Ctags" > /dev/null
+			if [ $? -eq 0 ]; then
+				found=1
+				break
+			fi
+		fi
+	done
+	if [ $found -eq 1 ]; then
+		break;
+	fi
+    done
+    if [ $found -ne 1 ]; then
         Error "Unable to determine Exuberant CTags command name" \
             "for ${OS_NAME} ${OS_VERSION}"
-        return
-    fi
-
-    # Verify that this really is Exuberant Ctags
-    $binary --version 2>&1 | grep "Exuberant Ctags" > /dev/null
-    if test $? -ne 0
-    then
-        Error "Unable to determine Exuberant CTags command name" \
-            "for ${OS_NAME} ${OS_VERSION}\n(${binary} is not Exuberant CTags)"
         return
     fi
 
@@ -419,32 +476,23 @@ FindJavaHome()
 {
     javaHome=""
     case "${OS_NAME}:${OS_VERSION}" in
-        SunOS:5.10) javaHome="/usr/jdk/instances/jdk1.6.0" ;;
-        SunOS:5.11) javaHome="/usr/jdk/latest"             ;;
-        Linux:*)
+	SunOS:5.10) javaHome="/usr/jdk/instances/jdk1.7.0" ;;
+	SunOS:5.11) javaHome="/usr/jdk/latest"             ;;
+	SunOS:5.12) javaHome="/usr/jdk/latest"             ;;
+	Darwin:*)    javaHome=`/usr/libexec/java_home`     ;;
+	Linux:*)
             if [ -f /etc/alternatives/java ]
             then
                javaHome=`ls -l /etc/alternatives/java | cut -f 2 -d \> `
                javaHome=`dirname $javaHome`
                javaHome=`dirname $javaHome`
-            else
-               for dir in /usr/lib/jvm/sun-jdk-1.6 \
-                          /usr/lib/jvm/sun-jre-1.6 \
-                          /usr/lib/jvm/java-6-sun
-               do
-                  if [ -f ${dir}/bin/java ]
-                  then
-                     javaHome=$dir
-                     break;
-                  fi
-               done
             fi
             ;;
     esac
 
     if [ -z "${javaHome}" ]
     then
-        Error "Unable to determine Java 6 Home" \
+        Error "Unable to determine Java 7 Home" \
               "for ${OS_NAME} ${OS_VERSION}"
         return
     fi
@@ -484,8 +532,7 @@ FindApplicationServerType()
 
     if [    -d "/var/tomcat6/webapps"        \
          -o -d "/var/lib/tomcat6/webapps"    \
-         -o -d "/var/lib/tomcat5/webapps"    \
-         -o -d "/var/lib/tomcat5.5/webapps"  \
+         -o -d "/var/lib/tomcat7/webapps"    \
        ]
     then
         echo "Tomcat"
@@ -518,8 +565,7 @@ DetermineWarDirectoryTomcat()
         ${OPENGROK_TOMCAT_BASE} \
         /var/tomcat6            \
         /var/lib/tomcat6        \
-        /var/lib/tomcat5        \
-        /var/lib/tomcat5.5
+        /var/lib/tomcat7
     do
         if [ -d "${prefix}/webapps" ]
         then
@@ -608,25 +654,26 @@ LoadStandardEnvironment()
 }
 
 #
-# Load default configuration and then merge with user specified configuration.
+# Load custom configuration and then fill remaining stuff with defaults.
 #
 LoadInstanceConfiguration()
 {
+    #
     # Note: As all functions have been defined by the time this routine
     # is called, your configuration can, if desired, override functions
     # in addition to setting the variables mentioned in the function
     # DefaultInstanceConfiguration(), this maybe useful to override
     # functionality used to determine the default deployment environment
     # find dependencies or validate the configuration, for example.
-
-    Progress "Loading the default instance configuration ..."
-    DefaultInstanceConfiguration
+    #
     if [ -n "${OPENGROK_CONFIGURATION}" -a -f "${OPENGROK_CONFIGURATION}" ]
     then
         # Load the Local OpenGrok Configuration Environment
         Progress "Loading ${OPENGROK_CONFIGURATION} ..."
         . "${OPENGROK_CONFIGURATION}"
     fi
+    Progress "Loading the default instance configuration ..."
+    DefaultInstanceConfiguration
 }
 
 ValidateConfiguration()
@@ -650,8 +697,23 @@ ValidateConfiguration()
 
     if [ -n "${OPENGROK_DERBY}" ]
     then
-        Warning "CHECK: derbyclient.jar needs to be in where the rest of " \
-	    "opengrok used jars are and in unpacked source.war in WEB-INF/lib !"
+        if [ `uname -s` == "SunOS" -a -d /opt/SUNWjavadb -a -d /usr/opengrok ];
+	then
+	    if [ -d "/var/tomcat6" -a \
+	        ! -r "/var/tomcat6/webapps/source/WEB-INF/lib/derbyclient.jar" ];
+	    then
+	        FatalError "JavaDB on but no derbyclient.jar under" \
+		    "/var/tomcat6/webapps/source/WEB-INF/lib"
+	    fi
+	    if [ ! -r "/usr/opengrok/lib/derbyclient.jar" ]; then
+	        FatalError "JavaDB on but no derbyclient.jar under" \
+		    "/usr/opengrok/lib"
+	    fi
+	else
+            Warning "CHECK: derbyclient.jar needs to be in where the rest of " \
+	        "opengrok used jars are and in unpacked source.war in " \
+		"WEB-INF/lib !"
+	fi
     fi
 }
 
@@ -693,14 +755,14 @@ CreateRuntimeRequirements()
             filename="opengrok%g.%u.log"
             fullpath="${OPENGROK_INSTANCE_BASE}/log/opengrok%g.%u.log"
             ${DO} grep -v java.util.logging.FileHandler.pattern \
-	        "${LOGGER_CONF_SOURCE}" > "${LOGGER_CONFIG_PATH}"
+	         "${LOGGER_CONF_SOURCE}" > "${LOGGER_CONFIG_PATH}"
             ${DO} grep java.util.logging.FileHandler.pattern \
-	        "${LOGGER_CONF_SOURCE}" | \
-		sed "s|$filename|$fullpath|g" >> "${LOGGER_CONFIG_PATH}"
-	     if [ ! -d ${OPENGROK_INSTANCE_BASE}/log ]
-             then
+	         "${LOGGER_CONF_SOURCE}" | \
+		 sed "s|$filename|$fullpath|g" >> "${LOGGER_CONFIG_PATH}"
+	    if [ ! -d ${OPENGROK_INSTANCE_BASE}/log ]
+            then
                  ${DO} mkdir ${OPENGROK_INSTANCE_BASE}/log
-             fi
+            fi
         fi
     fi
 
@@ -723,16 +785,19 @@ StdInvocation()
         ${JAVA_DEBUG}                                           \
         -jar ${OPENGROK_JAR}                                    \
         ${IGNORE_PATTERNS} ${ENABLE_PROJECTS}                   \
-        ${DERBY_HISTORY_CACHE}                                  \
+        ${DERBY_OPTIONS}					\
+        ${HISTORY_TAGS}						\
         ${SCAN_FOR_REPOSITORY} ${REMOTE_REPOSITORIES}           \
         ${SCAN_DEPTH}                                           \
         ${VERBOSE} ${QUIET}                                     \
         ${PROGRESS}                                             \
         ${EXUBERANT_CTAGS:+-c} ${EXUBERANT_CTAGS}               \
-        ${MAX_INDEXED_WORDS} ${SKIN} ${LEADING_WILDCARD}        \
+        ${CTAGS_OPTIONS_FILE:+-o} ${CTAGS_OPTIONS_FILE}         \
+        ${OPENGROK_FLUSH_RAM_BUFFER_SIZE} ${SKIN} ${LEADING_WILDCARD}        \
         ${READ_XML_CONF}                                        \
         -W ${XML_CONFIGURATION}                                 \
         ${WEBAPP_CONFIG}                                        \
+        ${WEBAPP_CONTEXT}                                       \
         -s ${SRC_ROOT} -d ${DATA_ROOT}                          \
         "${@}"
 }
@@ -813,6 +878,14 @@ DerbyServer()
         SunOS:5.11)
                     /sbin/svcadm enable javadb
                      ;;
+        SunOS:5.12)
+                    echo "Below might need your socket permission setup"
+                    echo "see JDK1.7_51 release notes"
+                    set -x
+                    mkdir -p $DATA_ROOT/derby
+                    java -Dderby.system.home=$DATA_ROOT/derby \
+		        -jar /usr/jdk/instances/jdk1.7.0/db/lib/derbynet.jar start
+                     ;;
         Linux:*)
                     mkdir -p $DATA_ROOT/derby
                     java -Dderby.system.home=$DATA_ROOT/derby \
@@ -820,6 +893,15 @@ DerbyServer()
                      ;;
         *)          Error "unsupported OS" ;;
     esac
+}
+
+#
+# Clear history index for given project.
+#
+ClearHistory()
+{
+	Progress "Removing history index data for repository ${1}"
+	StdInvocation -k "${1}"
 }
 
 #
@@ -873,11 +955,17 @@ case "${1}" in
         UpdateDescriptionCache
         ;;
 
-    usage)
+    clearHistory)
+	if [ -z "${2}" ]; then
+		Usage
+	fi
+	ClearHistory "${2}"
+	;;
+
+    usage|help)
         OpenGrokUsage
         Usage
         ;;
-
     *)
         Usage
         ;;

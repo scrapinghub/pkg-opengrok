@@ -5,7 +5,7 @@
 <refmeta>
 <refentrytitle>opengrok</refentrytitle>
 <manvolnum>1</manvolnum>
-<refmiscinfo class="date">Mar 30, 2012</refmiscinfo>
+<refmiscinfo class="date">Apr 8, 2014</refmiscinfo>
 </refmeta>
 <refnamediv>
 <refname>opengrok</refname>
@@ -17,7 +17,7 @@
 <optional><option>
 ?</option></optional>
 <optional><option>
-A <replaceable>ext:analyzer</replaceable></option></optional>
+A <replaceable>.ext|prefix.:analyzer</replaceable></option></optional>
 <optional><option>
 a <replaceable>on/off</replaceable></option></optional>
 <optional><option>
@@ -32,6 +32,8 @@ D</option></optional>
 d <replaceable>/path/to/data/root</replaceable></option></optional>
 <optional><option>
 e</option></optional>
+<optional><option>
+G</option></optional>
 <optional><option>
 H</option></optional>
 <optional><option>
@@ -58,6 +60,8 @@ N <replaceable>/path/to/symlink</replaceable></option></optional>
 n</option></optional>
 <optional><option>
 O <replaceable>on/off</replaceable></option></optional>
+<optional><option>
+o <replaceable>path</replaceable></option></optional>
 <optional><option>
 P</option></optional>
 <optional><option>
@@ -110,14 +114,15 @@ formats and version control histories.
 <refsect1><title>OPTIONS</title>
 <variablelist termlength="medium">
 <varlistentry><term><option>?</option></term><listitem><para>Help</para></listitem></varlistentry>
-<varlistentry><term><option>A</option></term><listitem><para>Files with the named extension should be analyzed with the specified class</para></listitem></varlistentry>
+<varlistentry><term><option>A</option></term><listitem><para>Files with the named prefix/extension should be analyzed with the specified class</para></listitem></varlistentry>
 <varlistentry><term><option>a</option></term><listitem><para>Allow or disallow leading wildcards in a search</para></listitem></varlistentry>
-<varlistentry><term><option>B</option></term><listitem><para>Base URL of the user Information provider. Default: "http://www.opensolaris.org/viewProfile.jspa?username="</para></listitem></varlistentry>
+<varlistentry><term><option>B</option></term><listitem><para>Base URL of the user Information provider. Default: "http://www.myserver.org/viewProfile.jspa?username="</para></listitem></varlistentry>
 <varlistentry><term><option>C</option></term><listitem><para>Print per project percentage progress information(I/O extensive, since one read through dir structure is made before indexing, needs -v, otherwise it just goes to the log)</para></listitem></varlistentry>
 <varlistentry><term><option>c</option></term><listitem><para>Path to Exuberant Ctags from http://ctags.sf.net by default takes the Exuberant Ctags in PATH.</para></listitem></varlistentry>
 <varlistentry><term><option>D</option></term><listitem><para>Store history cache in a database (needs the JDBC driver in the classpath, typically derbyclient.jar or derby.jar)</para></listitem></varlistentry>
 <varlistentry><term><option>d</option></term><listitem><para>The directory where OpenGrok stores the generated data</para></listitem></varlistentry>
 <varlistentry><term><option>e</option></term><listitem><para>Economical - consumes less disk space. It does not generate hyper text cross reference files offline, but will do so on demand - which could be sightly slow.</para></listitem></varlistentry>
+<varlistentry><term><option>G</option></term><listitem><para>Assign commit tags to all entries in history for all repositories.</para></listitem></varlistentry>
 <varlistentry><term><option>H</option></term><listitem><para>Generate history cache for all repositories</para></listitem></varlistentry>
 <varlistentry><term><option>h</option></term><listitem><para>just generate history cache for the specified repos (absolute path from source root)</para></listitem></varlistentry>
 <varlistentry><term><option>I</option></term><listitem><para>Only files matching this pattern will be examined (supports wildcards, example: -I *.java -I *.c)</para></listitem></varlistentry>
@@ -127,13 +132,14 @@ formats and version control histories.
 <varlistentry><term><option>K</option></term><listitem><para>List all repository pathes and exit.</para></listitem></varlistentry>
 <varlistentry><term><option>L</option></term><listitem><para>Path to the subdirectory in the web-application containing the requested stylesheet. The following factory-defaults exist: "default", "offwhite" and "polished"</para></listitem></varlistentry>
 <varlistentry><term><option>l</option></term><listitem><para>Turn on/off locking of the Lucene database during index generation</para></listitem></varlistentry>
-<varlistentry><term><option>m</option></term><listitem><para>The maximum words to index in a file</para></listitem></varlistentry>
+<varlistentry><term><option>m</option></term><listitem><para>Amount of memory that may be used for buffering added documents and deletions before they are flushed to the Directory(default 16.0MB). Please increase JVM heap accordingly, too.</para></listitem></varlistentry>
 <varlistentry><term><option>N</option></term><listitem><para>Allow this symlink to be followed. Option may be repeated.</para></listitem></varlistentry>
 <varlistentry><term><option>n</option></term><listitem><para>Do not generate indexes, but process all other command line options</para></listitem></varlistentry>
 <varlistentry><term><option>O</option></term><listitem><para>Turn on/off the optimization of the index database as part of the indexing step</para></listitem></varlistentry>
+<varlistentry><term><option>o</option></term><listitem><para>File with extra command line options for ctags</para></listitem></varlistentry>
 <varlistentry><term><option>P</option></term><listitem><para>Generate a project for each of the top-level directories in source root</para></listitem></varlistentry>
 <varlistentry><term><option>p</option></term><listitem><para>This is the path to the project that should be selected by default in the web application(when no other project set either in cookie or in parameter). You should strip off the source root.</para></listitem></varlistentry>
-<varlistentry><term><option>Q</option></term><listitem><para>Turn on/off quick context scan. By default only the first 32k of a file is scanned, and a '[..all..]' link is inserted if the file is bigger. Activating this may slow the server down (Note: this is setting only affects the web application)</para></listitem></varlistentry>
+<varlistentry><term><option>Q</option></term><listitem><para>Turn on/off quick context scan. By default only the first 1024k of a file is scanned, and a '[..all..]' link is inserted if the file is bigger. Activating this may slow the server down (Note: this is setting only affects the web application)</para></listitem></varlistentry>
 <varlistentry><term><option>q</option></term><listitem><para>Run as quietly as possible</para></listitem></varlistentry>
 <varlistentry><term><option>R</option></term><listitem><para>Read configuration from the specified file</para></listitem></varlistentry>
 <varlistentry><term><option>r</option></term><listitem><para>Turn on/off support for remote SCM systems</para></listitem></varlistentry>
@@ -148,7 +154,7 @@ formats and version control histories.
 <varlistentry><term><option>W</option></term><listitem><para>Write the current configuration to the specified file (so that the web application can use the same configuration</para></listitem></varlistentry>
 <varlistentry><term><option>w</option></term><listitem><para>Context of webapp. Default is /source. If you specify a different name, make sure to rename source.war to that name.</para></listitem></varlistentry>
 <varlistentry><term><option>X</option></term><listitem><para>URL Suffix for the user Information provider. Default: ""</para></listitem></varlistentry>
-<varlistentry><term><option>z</option></term><listitem><para>depth of scanning for repositories in directory structure relative to source root</para></listitem></varlistentry>
+<varlistentry><term><option>z</option></term><listitem><para>depth of scanning for repositories in directory structure relative to source root. Default is 3 .</para></listitem></varlistentry>
 </variablelist>
 </refsect1>
 

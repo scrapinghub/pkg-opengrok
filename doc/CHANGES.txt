@@ -1,3 +1,196 @@
+April 2014 release 0.12
+-------------------------------------------------
+
+This is a major release and uses lucene 4.7.1.
+{OpenGrok was moved to github and java.net, since opensolaris.org is no more.
+
+http://opengrok.github.com/OpenGrok
+https://github.com/OpenGrok/OpenGrok
+http://java.net/projects/opengrok
+
+Features:
+
+ JDK7 + tomcat7 tested, JDK6 unsupported!
+ lucene 4.7.1 -> A LOT faster engine, no spellindex needed, regexp search supported (see help)
+ pl/sql, scala, uuencode languages/analyzers support
+ php analyzers improved
+ monotone, mercurial SCM support improved
+ AccuRev SCM added to supported SCMs
+ Surround SCM added to supported SCMs
+ new config options in OpenGrok script
+ new search by analyzer/language
+ full history tracking for files renamed in Mercurial repository (disabled by default)
+ small UI enhancements
+ a lot of history cache fixes and tunables
+ zaphist history cleanup command
+ better developer support, added automated travis builds for pull request + sonar
+
+Bug fixes(newest first):
+ 
+ take (jdbc) queries from the bug, fixes  #774
+ simplify lucene version in mvn build file
+ Missing ../ in path when displaying xml xref fixes #806
+ prefix entry with backslash if it does not start with it fixes #800
+ add elapsed time reporting for 2nd phase of indexing and report total time as well
+ more intelligent way of finding Exuberant ctags fixes #772
+ implement tunable for suppressing history fetch other than from the cache fixes #446
+ add zaphist sub-command to clear history cache for given repository fixes #758
+ remove too generic MAGICS from Java and Scala analyzers fixes #782
+ change the renamed file handling tunable to be false by default
+ fix -r dirbased for remote repositories which cannot get have per-directory history
+ do not run expensive JDBC query if FILEMOVES table is empty or tracking of renamed files is off this works around #774
+ sonar support
+ trigger travis build
+ create history data directories for renamed files before spawning the threads fixes #775
+ rework handling of latest revisions for list of repositories fixes #771
+ do not list files for changesets when getting history for a file fixes #768
+ implement incremental history index for file based repository fixes #729
+ simple stats fixes #764
+ need to wait for the renamed thread pool threads to be really gone
+ do not check repository unless it is non-null in getHistory()
+ introduce dirbased state for remote SCMs
+ use correct path separator
+ need to be more intelligent in determining if repo is remote
+ fix jenkins build due to missing org.hamcrest
+ destroy renamed files thread pool also for the case when the indexer is run without -H
+ fix ctags system configuration tunable to match the opengrok sources
+ destroy pool for renamed files handling properly
+ tunable of remote repositories to allow generating history only from UI fixes #748
+ make the OpenGrok script work on OS X fixes #687
+ Countdownlatch (for renamed history)
+ replace condvar with CountDownLatch fixes #754
+ Seach the vb directory for a list of visual basic reserved words. Without this, the VB analyser will fail at runtime because the file is missing
+ use separate pool for history generation of renamed files fixes #751
+ better logging for indexing fixes #749
+ human readable time format for duration of history index fixes #745
+ remove old cruft and make Mercurial history parsing more strict so that it can detect format changes fixes #743
+ make file based history cache creation synchronous
+ add private tunable to disable handling of renamed files
+ QUERIES has to be fully initialized before getQuery() is called
+ Stop matching empty strings in heredocs
+ Fixes infinite loop that was exposed after upgrading to JFlex 1.5.0
+ give the chance to tune RAM buffer size + some tuning docs fixes #718
+ jflex 1.5.0
+ when no branch is specified, only fetch revisions on the default branch fixes #516
+ parallelize history indexing of renamed files fixes #728
+ partial fix for #7178 GC overhead limit hit when reindexing large code base with 0.12-rc5
+ add title explaining the link
+ report timeout value when terminating process
+ move the revision tag to comments and make it visible as link fixes #587
+ use webapp prefix from runtime environment
+ introduce method for getting revision ID out of revision ID from HistoryEntry suitable for annotate fixes #722
+ first version of changeset search link in Annotate view fixes #721
+ perform HTML escaping in diffline() fixes #719
+ use correct variable name for hash retrieval fixes #715
+ add missing changes for non-default CSS for issue #573
+ use wildcard CSS prefix matching for div id src fixes #716
+ let the comments wrap, left-align comments even for history view of directories fixes #570
+ do not assume that the build happens in git repo or archived git repo fixes #712
+ add H A D links to directory listing fixes #573
+ fix dtags.eftar file descriptor leak fixes #535
+ do not unnecessarily create 2 File objects when returning eftar reader fixes #539
+ differentiate between raw and download fixes #578
+ anchor highlighting for all styles
+ highlight line number with anchor fixes #702
+ fix junit after #681 + some special case logic fix
+ show time to get the results even when no match was found
+ Fix for issue 294 (definitions search displays comment lines)
+ timeout for command execution fixes #429 fixes #487
+ show time to get the results even when no match was found fixes #698
+ Small tweak to only use new defs search rules if ONLY the defs field is populated, as per tarzanek's concerns
+ dist-src is not needed as Github creates the tarball/zip itself automatically
+ fixes #10 False matches in Java class files
+ lucene 4.6.0 + fix summarizer to follow proper tokenstream API
+ add testcase for issue #694
+ ignore path actions which match top-level directory of the repository in Subversion history parser fixes #694
+ let sendToConfigHost body use the parameter "env" to keep align with its signature and other methods
+ need more careful checking of repositories.zip in order to avoid generating it every time single test is run
+ make -post-compile-test pre-requisite for running single test file fixes #686
+ duplicate key value JDBC exception when indexing large Mercurial repo fixes #683
+ bug #672 need double-quotes to specify path
+ improve comment why we can change \ to /
+ bug #625 xref links containing \u don't seem to be working
+ follow-up fixes for Mercurial renamed files handling fixes #666
+ Modified 'Definitions' search to only return where actual definitions of functions/variables/macros/etc are found 
+ Support for Surround SCM history
+ store changesets which changed file when it was named differently in extra table
+ generate history of files renamed in Mercurial repo separately fixes #22
+ introduce OPENGROK_WEBAPP_CONTEXT for setting the webapp context
+ #637 cleanup spellchecker code, use Direct spellchecker to avoid another index creation
+ #641 , #604 introduce prefix matching
+ #656 , #529 introduce OPENGROK_DERBY_URL for selecting JavaDB instance
+ lucene 4.4.0 + new wildcard test
+ #649 Make sure history.jsp doesn't strip off too much when creating a relative path name.
+ Fix tags when using JDBCHistoryCache.
+ Improve escaping of strings in webapp.
+ netbeans 7.3.1
+ add support for tomcat7, Solaris 12 (dev)
+ scala support for ctags
+ #59 Added support for printing multi-page soure code by disabling scrolling in print media's CSS.
+ Added a new field “fileType” to the Lucene index. - search by type feature
+ #57 div src not unique when multiple readmes
+ #5 opensolaris.org cleanup
+ add scala support (just for xrefs, defs and refs are not in there)
+ introducing uuencode(5) support
+ Improve log formatters
+ #8 Improve cleanup of resources opened by the analyze() methods.
+ #9 fixes for FilePath searches being broken (in QueryBuilder)
+ #7 fix duplicate documents and tests for add/remove files to index
+ #8 Change the analyzers so that they don't keep the entire file in memory. 
+ #4 , #13 allow to fetch contents of renamed files in Mercurial 
+ #15 fix automatic JFlex download 
+ rename rcs/cvs test directories to prevent failures when running history guru tests
+ Make sure AccuRevRepository closes readers
+ netbeans 7.3 config file modifications
+ update maven builds to use java 1.7
+ new mailing lists
+ change first batch of links from opensolaris.org to github project pages
+ shorten git changeset IDs
+ fix OpenGrok to support JDK 7 in Solaris
+ Bug 12963 - use tags in History view
+ Don't use String.intern() in the fix for bug #809.
+ Test both of the EftarFileReader constructors in EftarFileTest
+ Bug 19242 - clearcase isWorking method does not work
+ Bug 19201 - OpenGrok shell script should load custom config before setting the defaults
+ Bug 19232 - NPE when the query has a syntax error
+ Bug 19230 - JDBCHistoryCache.hasCacheForDirectory is buggy
+ fix evaluation of OPENGROK_CTAGS_OPTIONS_FILE
+ Bug 19228 - changeset shorter than 8 bytes is detected in wrong way
+ Bug 19221 - diff does not work for plaintext files with colon in their filename (redo)
+ Bug #3174: Last-modified-time should reflect the modification for the revision
+ Bug 6163 - ShAnalyzer magic strings should be more strict to match only valid shell scripts
+ Bug 19221 - diff does not work for plaintext files with colon in their filename
+ Log why cache creation is skipped when repository doesn't support history for directories
+ Bug 19217 Improve PHP scanners
+     Added 'instanceof' and PHP 5.4 keywords
+     Better phpDoc, HTML comments and PHP casts.
+ Bug 19215 - OpenGrok leaks file descriptors - temporary fix
+ Update the monotone support for 1.0 (org.opensolaris.opengrok.history.monotone.deprecated)
+ Support for AccuRev repository introduced
+ Bug 19208 - Need support for Oracle PLSQL in opengrok
+     update plugins for mvn , add "help" to OpenGrok
+ Bug 19200 - search only in - needs more work
+ Bug 19198 - Inadequate indentation
+ fix description of default location of ctags.config
+ Bug 19195 - it should be possible to supply extra command line options to ctags
+ rename OPENGROK_REMOTE_REPOS to reflect reality
+ steps on how to set path descriptions should be better documented
+ enable asserts for the project and fix testing for asserts (will fix maven tests)
+ fix the clear button (take2) + fix the enter button in project field to work again
+ Bug 19184 - README file contents are not displayed anymore in directory listing
+ Bug 19188: if filename has ":" in its name, the link to it from xref will be wrong
+ Allow the user to override the number of threads to use to generate history cache
+ Simplify database code by using JDBC 4.0/Java 6 features
+ check of mkfifo in PATH for testBug11896 should avoid using executor
+ Bug 19181 - ignored list should not contain bin,lib entries
+ Bug 19177 - JAVA_OPTS should be configurable in OpenGrok shell script
+ Bug 19175 - OpenGrok shell script does not merge configuration with default when using OPENGROK_CONFIGURATION
+ Bug 19164 - OpenGrok shell script should have a way to tell not to send config to webapp
+ fix clean button
+ avoid eftar file test and exception on every page access
+ avoid unecessary I/O - cache contents of timestamp/{header,footer}_include until reconfiguration occures
+ 
+
 March 2012 update 0.11.1
 -------------------------------------------------
 
@@ -14,7 +207,7 @@ Bug fixes
  Bug #19184: - README file contents are not displayed anymore in directory listing
 
 
-February 2012 update 0.11
+February 2012 release 0.11
 -------------------------------------------------
 
 This is a major update. It is advised that you cleanup your old DATA_ROOT
