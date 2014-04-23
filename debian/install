@@ -1,9 +1,12 @@
-bin/OpenGrok                           /usr/bin
-lib/lib/ant.jar                        /usr/share/opengrok
-lib/lib/lucene-core-3.0.2.jar          /usr/share/opengrok
-lib/lib/lucene-spellchecker-3.0.2.jar  /usr/share/opengrok
-lib/lib/jrcs.jar                       /usr/share/opengrok
-lib/lib/bcel-5.2.jar                   /usr/share/opengrok
-lib/lib/swing-layout-0.9.jar           /usr/share/opengrok
-lib/source.war                         /usr/share/opengrok
-lib/opengrok.jar                       /usr/share/opengrok
+bin/OpenGrok                               /usr/bin
+
+lib/lib/ant.jar                            /usr/share/opengrok
+lib/lib/bcel-5.2.jar                       /usr/share/opengrok
+lib/lib/jrcs.jar                           /usr/share/opengrok
+lib/lib/lucene-analyzers-common-4.7.1.jar  /usr/share/opengrok
+lib/lib/lucene-core-4.7.1.jar              /usr/share/opengrok
+lib/lib/lucene-queryparser-4.7.1.jar       /usr/share/opengrok
+lib/lib/lucene-suggest-4.7.1.jar           /usr/share/opengrok
+lib/lib/swing-layout-0.9.jar               /usr/share/opengrok
+lib/source.war                             /usr/share/opengrok
+lib/opengrok.jar                           /usr/share/opengrok
