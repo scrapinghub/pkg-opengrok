@@ -1,7 +1,7 @@
 OpenGrok for Debian
 -------------------
 
-This is the packaging of OpenGrok made by ScrapingHub team.
+This is the packaging of OpenGrok made by Scrapinghub team.
 
 For further information about OpenGrok enter:
 
