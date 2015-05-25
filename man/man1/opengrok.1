@@ -5,7 +5,7 @@
 <refmeta>
 <refentrytitle>opengrok</refentrytitle>
 <manvolnum>1</manvolnum>
-<refmiscinfo class="date">Apr 8, 2014</refmiscinfo>
+<refmiscinfo class="date">Apr 29, 2014</refmiscinfo>
 </refmeta>
 <refnamediv>
 <refname>opengrok</refname>
@@ -133,7 +133,7 @@ formats and version control histories.
 <varlistentry><term><option>L</option></term><listitem><para>Path to the subdirectory in the web-application containing the requested stylesheet. The following factory-defaults exist: "default", "offwhite" and "polished"</para></listitem></varlistentry>
 <varlistentry><term><option>l</option></term><listitem><para>Turn on/off locking of the Lucene database during index generation</para></listitem></varlistentry>
 <varlistentry><term><option>m</option></term><listitem><para>Amount of memory that may be used for buffering added documents and deletions before they are flushed to the Directory(default 16.0MB). Please increase JVM heap accordingly, too.</para></listitem></varlistentry>
-<varlistentry><term><option>N</option></term><listitem><para>Allow this symlink to be followed. Option may be repeated.</para></listitem></varlistentry>
+<varlistentry><term><option>N</option></term><listitem><para>Allow this symlink to be followed. Option may be repeated. By default only symlinks directly under source root directory are allowed.</para></listitem></varlistentry>
 <varlistentry><term><option>n</option></term><listitem><para>Do not generate indexes, but process all other command line options</para></listitem></varlistentry>
 <varlistentry><term><option>O</option></term><listitem><para>Turn on/off the optimization of the index database as part of the indexing step</para></listitem></varlistentry>
 <varlistentry><term><option>o</option></term><listitem><para>File with extra command line options for ctags</para></listitem></varlistentry>
